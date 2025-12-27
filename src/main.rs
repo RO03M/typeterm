@@ -5,6 +5,7 @@ use crossterm::{cursor::{MoveRight, MoveTo, MoveToRow}, event::{Event, KeyCode, 
 use crate::colors::{red, red_hi, yellow};
 
 mod colors;
+mod config;
 
 fn print_parts(input: &str, target_text: &str) {
     let target_parts: Vec<&str> = target_text.split(" ").collect();
@@ -22,12 +23,10 @@ fn print_parts(input: &str, target_text: &str) {
 
 fn render() -> Result<(), Error> {
     let mut stdout = stdout();
-    let mut full_text = String::from("Lorem Ipsum is simply");
-    
-    // io::stdin().read_line(&mut full_text).expect("Failed to read line from stdin");
+    let config = config::Config::new();
     
     let mut input = String::new();
-    let full_text_parts: Vec<&str> = full_text.split(" ").collect();
+    let full_text_parts: Vec<&str> = config.text.split(" ").collect();
     let target_word_count = full_text_parts.len();
     let last_word = full_text_parts.last().copied().unwrap_or("");
     
@@ -36,7 +35,7 @@ fn render() -> Result<(), Error> {
     loop  {
         let _ = execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
         
-        print_parts(input.as_str(), full_text.as_str());
+        print_parts(input.as_str(), config.text.as_str());
         
         if input.len() > 0 {
             let _ = execute!(stdout, MoveToRow(0), MoveRight(input.len().try_into().unwrap_or(0)));
@@ -72,7 +71,7 @@ fn render() -> Result<(), Error> {
     
     let end = Instant::now() - start;
     
-    let wpm = calculate_wpm(input.as_str(), full_text.as_str(), end);
+    let wpm = calculate_wpm(input.as_str(), config.text.as_str(), end);
     
     println!("WPM: {}", wpm);
     
@@ -143,15 +142,9 @@ fn main() -> Result<(), ()> {
     show_results(start);
     
     let _ = disable_raw_mode();
-    
-    // print_word_match("te", "test");
-    // print_word_match("xx", "test");
-    // print_word_match("xxxx", "test");
-    // print_word_match("testwrong", "test");
-    // 
-    // calculate_wpm("tar tar", "target xar", Instant::se());
-    
+ 
     println!();
+
     
     Ok(())
 }
