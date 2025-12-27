@@ -30,7 +30,7 @@ fn render() -> Result<(), Error> {
     let target_word_count = full_text_parts.len();
     let last_word = full_text_parts.last().copied().unwrap_or("");
     
-    let start = Instant::now();
+    let mut start: Option<Instant> = None;
     
     loop  {
         let _ = execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
@@ -43,11 +43,16 @@ fn render() -> Result<(), Error> {
             let _ = execute!(stdout, MoveTo(0, 0));
         }
         
+        if input.len() > 0 && start.is_none() {
+            start = Some(Instant::now());
+        }
+        
         let input_parts: Vec<&str> = input.split(" ").collect();
         let input_word_count = input_parts.len();
         let input_last_word = input_parts.last().copied().unwrap_or("");
         
-        // println!("\n\rinput_word_count: {}\n\rlast_word: {}\n\rfull_text_word_count: {}\n\rlast_word: {}\n\r", input_word_count, input_last_word, target_word_count, last_word);
+        #[cfg(debug_assertions)]
+        println!("\n\rinput_word_count: {}\n\rlast_word: {}\n\rfull_text_word_count: {}\n\rlast_word: {}\n\r", input_word_count, input_last_word, target_word_count, last_word);
         
         if input_word_count == target_word_count && last_word == input_last_word {
             print!("\n");
@@ -69,11 +74,13 @@ fn render() -> Result<(), Error> {
         }
     }
     
-    let end = Instant::now() - start;
-    
-    let wpm = calculate_wpm(input.as_str(), config.text.as_str(), end);
-    
-    println!("WPM: {}", wpm);
+    if start.is_some() {
+        let end = Instant::now() - start.unwrap();
+        
+        let wpm = calculate_wpm(input.as_str(), config.text.as_str(), end);
+        
+        println!("\rWPM: {}", wpm);
+    }
     
     Ok(())
 }
@@ -124,27 +131,16 @@ fn calculate_wpm(input: &str, target: &str, time: Duration) -> f32 {
     return (correct_chars_count as f32 / 5.0) / minutes;
 }
 
-fn show_results(start: Instant) {
-    let end = Instant::now() - start;
-    
-    println!("\n\rTook {} seconds", end.as_secs());
-}
-
 fn main() -> Result<(), ()> {
     let _ = enable_raw_mode();
-    
-    let start = Instant::now();
     
     if let Err(e) = render() {
         eprintln!("Error: {e}");
     }
     
-    show_results(start);
-    
     let _ = disable_raw_mode();
  
     println!();
-
     
     Ok(())
 }

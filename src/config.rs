@@ -9,7 +9,10 @@ struct Args {
     text: Option<String>,
     
     #[arg(short, long)]
-    file: Option<String>
+    file: Option<String>,
+    
+    #[arg(short, long, visible_alias("t"))]
+    word_count: Option<u32>,
 }
 
 pub struct Config {
@@ -19,7 +22,7 @@ pub struct Config {
 impl Config {
     pub fn new() -> Config {
         return Config {
-            text: Config::get_default_text()
+            text: Config::get_default_text().trim().to_string()
         };
     }
     
@@ -74,7 +77,8 @@ impl Config {
     }
     
     fn generate_text() -> String {
-        let words_count = 15; // fixed for now
+        let args = Args::parse();
+        let words_count = args.word_count.unwrap_or(10);
         
         let words = Config::get_random_lines(words_count);
         
