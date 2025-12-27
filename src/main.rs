@@ -1,6 +1,6 @@
 use std::{io::{Error, stdout}, time::{Duration, Instant}};
 
-use crossterm::{cursor::{MoveRight, MoveTo, MoveToRow}, event::{Event, KeyCode, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
+use crossterm::{cursor::{MoveRight, MoveTo, MoveToRow}, event::{Event, KeyCode, KeyModifiers, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
 
 use crate::colors::{red, red_hi, yellow};
 
@@ -60,16 +60,27 @@ fn render() -> Result<(), Error> {
         }
         
         match read().unwrap() {
-            Event::Key(event) => match event.code {
-                KeyCode::Char(char) => {
-                    input.push(char);
+            Event::Key(event) => match (event.code, event.modifiers) {
+                (KeyCode::Char('w'), m) | (KeyCode::Backspace, m) if m.contains(KeyModifiers::CONTROL) => {
+                    while let Some(c) = input.chars().last() {
+                        if c.is_whitespace() {
+                            break;
+                        }
+                        
+                        input.pop();
+                    }                    
                 },
-                KeyCode::Backspace => {
+                (KeyCode::Backspace, _) => {
                     input.pop();
                 },
-                KeyCode::Esc => break,
+                (KeyCode::Esc, _) => {
+                    break;
+                },
+                (KeyCode::Char(c), _) => {
+                    input.push(c);
+                },
                 _ => {}
-            },
+            }
             _ => {}
         }
     }
