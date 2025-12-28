@@ -1,6 +1,6 @@
 use std::{io::{Error, stdout}, time::{Duration, Instant}};
 
-use crossterm::{cursor::{MoveRight, MoveTo, MoveToRow}, event::{Event, KeyCode, KeyModifiers, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
+use crossterm::{cursor::{MoveRight, MoveTo, MoveToRow}, event::{Event, KeyCode, KeyModifiers, poll, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
 
 use crate::colors::{red, red_hi, yellow};
 
@@ -35,13 +35,10 @@ fn render() -> Result<(), Error> {
     loop  {
         let _ = execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
         
-        print_parts(input.as_str(), config.text.as_str());
+        println!("\r{}", (Instant::now() - start.unwrap_or(Instant::now())).as_secs());
         
-        if input.len() > 0 {
-            let _ = execute!(stdout, MoveToRow(0), MoveRight(input.len().try_into().unwrap_or(0)));
-        } else {
-            let _ = execute!(stdout, MoveTo(0, 0));
-        }
+        print!("\r");
+        print_parts(input.as_str(), config.text.as_str());
         
         if input.len() > 0 && start.is_none() {
             start = Some(Instant::now());
@@ -52,37 +49,59 @@ fn render() -> Result<(), Error> {
         let input_last_word = input_parts.last().copied().unwrap_or("");
         
         #[cfg(debug_assertions)]
-        println!("\n\rinput_word_count: {}\n\rlast_word: {}\n\rfull_text_word_count: {}\n\rlast_word: {}\n\r", input_word_count, input_last_word, target_word_count, last_word);
+        {
+            println!("\n\rinput_word_count: {}", input_word_count);
+            println!("\rinput_last_word: {}", input_last_word);
+            println!("\rinput_length: {}", input.chars().count());
+            println!("\rtarget_word_count: {}", target_word_count);
+            println!("\rtarget_last_word: {}", last_word);
+            println!("\rtarget_text_length: {}", config.text.chars().count());
+        }
         
         if input_word_count == target_word_count && last_word == input_last_word {
             print!("\n");
             break;
         }
         
-        match read().unwrap() {
-            Event::Key(event) => match (event.code, event.modifiers) {
-                (KeyCode::Char('w'), m) | (KeyCode::Backspace, m) if m.contains(KeyModifiers::CONTROL) => {
-                    while let Some(c) = input.chars().last() {
-                        if c.is_whitespace() {
-                            break;
-                        }
-                        
+        if input.len() > 0 {
+            let _ = execute!(stdout, MoveTo(0, 1), MoveRight(input.chars().count().try_into().unwrap_or(0)));
+        } else {
+            let _ = execute!(stdout, MoveTo(0, 1));
+        }
+        
+        if poll(Duration::from_millis(500)).unwrap() {
+            match read().unwrap() {
+                Event::Key(event) => match (event.code, event.modifiers) {
+                    (KeyCode::Char('w'), m) | (KeyCode::Backspace, m) if m.contains(KeyModifiers::CONTROL) => {
                         input.pop();
-                    }                    
-                },
-                (KeyCode::Backspace, _) => {
-                    input.pop();
-                },
-                (KeyCode::Esc, _) => {
-                    break;
-                },
-                (KeyCode::Char(c), _) => {
-                    input.push(c);
-                },
+                        while let Some(c) = input.chars().last() {
+                            if c.is_whitespace() {
+                                break;
+                            }
+                            
+                            input.pop();
+                        }                    
+                    },
+                    (KeyCode::Backspace, _) => {
+                        input.pop();
+                    },
+                    (KeyCode::Esc, _) => {
+                        break;
+                    },
+                    (KeyCode::Char(' '), _) => {
+                        if input.chars().last().unwrap_or(' ') != ' ' {
+                            input.push(' ');
+                        }
+                    },
+                    (KeyCode::Char(c), _) => {
+                        input.push(c);
+                    },
+                    _ => {}
+                }
                 _ => {}
             }
-            _ => {}
         }
+        
     }
     
     if start.is_some() {
