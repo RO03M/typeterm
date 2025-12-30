@@ -2,12 +2,14 @@ use std::{io::{Error, stdout}, time::{Duration, Instant}};
 
 use crossterm::{cursor::{MoveRight, MoveTo, MoveToRow}, event::{Event, KeyCode, KeyModifiers, poll, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
 
-use crate::colors::{red, red_hi, yellow};
+use crate::{colors::{red, red_hi, yellow}, session::Session};
 
 mod colors;
 mod config;
+mod session;
 
 fn print_parts(input: &str, target_text: &str) {
+    print!("\r");
     let target_parts: Vec<&str> = target_text.split(" ").collect();
     let input_parts: Vec<&str> = input.split(" ").collect();
     
@@ -24,47 +26,40 @@ fn print_parts(input: &str, target_text: &str) {
 fn render() -> Result<(), Error> {
     let mut stdout = stdout();
     let config = config::Config::new();
-    
-    let mut input = String::new();
-    let full_text_parts: Vec<&str> = config.text.split(" ").collect();
-    let target_word_count = full_text_parts.len();
-    let last_word = full_text_parts.last().copied().unwrap_or("");
-    
-    let mut start: Option<Instant> = None;
+    let mut session = Session::new(config.mode, config.text.clone());
     
     loop  {
         let _ = execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
         
-        println!("\r{}", (Instant::now() - start.unwrap_or(Instant::now())).as_secs());
+        session.print_mode_header();
         
-        print!("\r");
-        print_parts(input.as_str(), config.text.as_str());
+        print_parts(session.input.as_str(), session.phrase().as_str());
         
-        if input.len() > 0 && start.is_none() {
-            start = Some(Instant::now());
+        if session.input.len() > 0 && !session.is_started() {
+            session.start();
         }
         
-        let input_parts: Vec<&str> = input.split(" ").collect();
-        let input_word_count = input_parts.len();
-        let input_last_word = input_parts.last().copied().unwrap_or("");
+        // let input_parts: Vec<&str> = session.input.split(" ").collect();
+        // let input_word_count = input_parts.len();
+        // let input_last_word = input_parts.last().copied().unwrap_or("");
         
-        #[cfg(debug_assertions)]
-        {
-            println!("\n\rinput_word_count: {}", input_word_count);
-            println!("\rinput_last_word: {}", input_last_word);
-            println!("\rinput_length: {}", input.chars().count());
-            println!("\rtarget_word_count: {}", target_word_count);
-            println!("\rtarget_last_word: {}", last_word);
-            println!("\rtarget_text_length: {}", config.text.chars().count());
-        }
+        // #[cfg(debug_assertions)]
+        // {
+        //     println!("\n\rinput_word_count: {}", input_word_count);
+        //     println!("\rinput_last_word: {}", input_last_word);
+        //     println!("\rinput_length: {}", input.chars().count());
+        //     println!("\rtarget_word_count: {}", target_word_count);
+        //     println!("\rtarget_last_word: {}", last_word);
+        //     println!("\rtarget_text_length: {}", config.text.chars().count());
+        // }
         
-        if input_word_count == target_word_count && last_word == input_last_word {
+        if session.should_end() {
             print!("\n");
             break;
         }
         
-        if input.len() > 0 {
-            let _ = execute!(stdout, MoveTo(0, 1), MoveRight(input.chars().count().try_into().unwrap_or(0)));
+        if session.input.len() > 0 {
+            let _ = execute!(stdout, MoveTo(0, 1), MoveRight(session.input.chars().count().try_into().unwrap_or(0)));
         } else {
             let _ = execute!(stdout, MoveTo(0, 1));
         }
@@ -73,28 +68,28 @@ fn render() -> Result<(), Error> {
             match read().unwrap() {
                 Event::Key(event) => match (event.code, event.modifiers) {
                     (KeyCode::Char('w'), m) | (KeyCode::Backspace, m) if m.contains(KeyModifiers::CONTROL) => {
-                        input.pop();
-                        while let Some(c) = input.chars().last() {
+                        session.input.pop();
+                        while let Some(c) = session.input.chars().last() {
                             if c.is_whitespace() {
                                 break;
                             }
                             
-                            input.pop();
+                            session.input.pop();
                         }                    
                     },
                     (KeyCode::Backspace, _) => {
-                        input.pop();
+                        session.input.pop();
                     },
                     (KeyCode::Esc, _) => {
                         break;
                     },
                     (KeyCode::Char(' '), _) => {
-                        if input.chars().last().unwrap_or(' ') != ' ' {
-                            input.push(' ');
+                        if session.input.chars().last().unwrap_or(' ') != ' ' {
+                            session.input.push(' ');
                         }
                     },
                     (KeyCode::Char(c), _) => {
-                        input.push(c);
+                        session.input.push(c);
                     },
                     _ => {}
                 }
@@ -104,13 +99,9 @@ fn render() -> Result<(), Error> {
         
     }
     
-    if start.is_some() {
-        let end = Instant::now() - start.unwrap();
-        
-        let wpm = calculate_wpm(input.as_str(), config.text.as_str(), end);
-        
-        println!("\rWPM: {}", wpm);
-    }
+    session.end();
+
+    println!("\rWPM: {}", session.wpm());
     
     Ok(())
 }

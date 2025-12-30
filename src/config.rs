@@ -11,34 +11,53 @@ enum Language {
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
-struct Args {
-    #[arg(short, long)]
+pub struct Args {
+    #[arg(long)]
     text: Option<String>,
     
     #[arg(short, long)]
     file: Option<String>,
     
-    #[arg(short, long, visible_alias("t"))]
+    #[arg(short, long, visible_alias("c"))]
     word_count: Option<u32>,
+    
+    #[arg(short, long, visible_alias("t"))]
+    time: Option<u32>,
     
     #[arg(short, long)]
     language: Option<Language>
 }
 
+pub enum Mode {
+    Timer(u32),
+    Word(u32)
+}
+
 pub struct Config {
-    pub text: String
+    pub text: String,
+    pub mode: Mode
 }
 
 impl Config {
     pub fn new() -> Config {
+        let args = Args::parse();
+        let mut mode = Mode::Timer(15);
+        
+        if args.time.is_some() {
+            mode = Mode::Timer(args.time.unwrap());
+        } else if args.word_count.is_some() {
+            mode = Mode::Word(args.word_count.unwrap());
+        }
+        
         return Config {
-            text: Config::get_default_text().trim().to_string()
+            text: Config::get_default_text().trim().to_string(),
+            mode: mode
         };
     }
     
     fn get_default_text() -> String {
         let stdin_text = Config::get_stdin_text();
-        println!("{}", stdin_text.is_some());
+
         if stdin_text.is_some() {
             return stdin_text.unwrap();
         }
