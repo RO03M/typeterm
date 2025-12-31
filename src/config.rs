@@ -29,6 +29,7 @@ pub struct Args {
 }
 
 pub enum Mode {
+    Free,
     Timer(u32),
     Word(u32)
 }
@@ -41,7 +42,7 @@ pub struct Config {
 impl Config {
     pub fn new() -> Config {
         let args = Args::parse();
-        let mut mode = Mode::Timer(15);
+        let mut mode = Mode::Free;
         
         if args.time.is_some() {
             mode = Mode::Timer(args.time.unwrap());
@@ -107,7 +108,7 @@ impl Config {
     
     fn generate_text() -> String {
         let args = Args::parse();
-        let words_count = args.word_count.unwrap_or(10);
+        let words_count = args.word_count.unwrap_or(200);
         
         let words = Config::get_random_lines(words_count, args.language.unwrap_or(Language::En));
         

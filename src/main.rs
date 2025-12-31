@@ -1,68 +1,57 @@
-use std::{io::{Error, stdout}, time::{Duration, Instant}};
-
-use crossterm::{cursor::{MoveRight, MoveTo, MoveToRow}, event::{Event, KeyCode, KeyModifiers, poll, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
-
-use crate::{colors::{red, red_hi, yellow}, session::Session};
-
 mod colors;
 mod config;
 mod session;
+mod words;
+mod display;
+mod page;
 
-fn print_parts(input: &str, target_text: &str) {
-    print!("\r");
-    let target_parts: Vec<&str> = target_text.split(" ").collect();
-    let input_parts: Vec<&str> = input.split(" ").collect();
-    
-    for (index, target_part) in target_parts.iter().enumerate() {
-        let input_part = input_parts.get(index).copied().unwrap_or("");
-        
-        print_word_match(input_part, target_part);
-        print!(" ");
-    }
-    
-    print!("\n\r");
-}
+use std::{io::{Error, stdout}, time::Duration};
+use crossterm::{cursor::{MoveRight, MoveTo}, event::{Event, KeyCode, KeyModifiers, poll, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
+use crate::{config::Mode, display::page_by_words, page::get_page_from_input, session::Session, words::compare_strings};
 
 fn render() -> Result<(), Error> {
     let mut stdout = stdout();
     let config = config::Config::new();
     let mut session = Session::new(config.mode, config.text.clone());
-    
+    let cell_y = if matches!(session.mode, Mode::Timer(_)) { 1 } else { 0 };
+    println!("celly: {cell_y}");
     loop  {
         let _ = execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
         
         session.print_mode_header();
         
-        print_parts(session.input.as_str(), session.phrase().as_str());
+        let current_page = get_page_from_input(&session.input, 10);
+        // println!("current_page: {current_page}");
+        let paged_input = page_by_words(session.input.clone(), 10, current_page);
+        let paged_phrase = page_by_words(session.phrase(), 10, current_page);
+        let next_page = page_by_words(session.phrase(), 10, current_page + 1);
+        
+        let match_text = compare_strings(paged_input.as_str(), paged_phrase.as_str());
+        print!("\r{}\n\r{}", match_text, next_page);
         
         if session.input.len() > 0 && !session.is_started() {
             session.start();
         }
-        
-        // let input_parts: Vec<&str> = session.input.split(" ").collect();
-        // let input_word_count = input_parts.len();
-        // let input_last_word = input_parts.last().copied().unwrap_or("");
-        
-        // #[cfg(debug_assertions)]
-        // {
-        //     println!("\n\rinput_word_count: {}", input_word_count);
-        //     println!("\rinput_last_word: {}", input_last_word);
-        //     println!("\rinput_length: {}", input.chars().count());
-        //     println!("\rtarget_word_count: {}", target_word_count);
-        //     println!("\rtarget_last_word: {}", last_word);
-        //     println!("\rtarget_text_length: {}", config.text.chars().count());
-        // }
-        
+
         if session.should_end() {
             print!("\n");
             break;
         }
         
-        if session.input.len() > 0 {
-            let _ = execute!(stdout, MoveTo(0, 1), MoveRight(session.input.chars().count().try_into().unwrap_or(0)));
+        // #[cfg(debug_assertions)]
+        // {
+        //     println!("\n\rpage: {current_page}");
+        //     println!("\rcursor_x: {}", paged_input.chars().count().try_into().unwrap_or(0));
+        //     println!("\rraw_input: {}", session.input);
+        //     println!("\rpaged_input: {paged_input}");
+        // }
+        
+        if paged_input.len() > 0 {
+            let _ = execute!(stdout, MoveTo(0, cell_y), MoveRight(paged_input.chars().count().try_into().unwrap_or(0)));
         } else {
-            let _ = execute!(stdout, MoveTo(0, 1));
+            let _ = execute!(stdout, MoveTo(0, cell_y));
         }
+        
         
         if poll(Duration::from_millis(500)).unwrap() {
             match read().unwrap() {
@@ -106,30 +95,6 @@ fn render() -> Result<(), Error> {
     Ok(())
 }
 
-fn print_word_match(input: &str, target: &str) {
-    for (i, char) in target.chars().enumerate() {
-        let input_char = input.chars().nth(i).unwrap_or('\0');
-        
-        if input_char == '\0' {
-            print!("{}", char);
-            continue;
-        }
-        
-        if input_char == char {
-            print!("{}", yellow(input_char.to_string().as_str()));
-        }
-        
-        if input_char != char {
-            print!("{}", red(input_char.to_string().as_str()));
-        }
-    }
-    
-    if input.len() > target.len() {
-        let input_rest = &input[target.len()..];
-        print!("{}", red_hi(input_rest));
-    }
-}
-
 fn calculate_wpm(input: &str, target: &str, time: Duration) -> f32 {
     let mut correct_chars_count = 0;
     
@@ -162,6 +127,17 @@ fn main() -> Result<(), ()> {
     let _ = disable_raw_mode();
  
     println!();
+ 
+    // println!("{}", get_page_from_input("with still can word may call up mean say keep year one however the both do small long stand if ", 10));
+    
+    // println!("{}", page_by_words("small school run could becom enation however develop from people because around where interest".to_string(), 10, 1));
+    
+    // let phrase = "since well both great little stuart".to_string();
+    // let p1 = page_by_words(phrase.clone(), 3, 0);
+    // let p2 = page_by_words(phrase.clone(), 3, 1);
+    // let p3 = page_by_words(phrase.clone(), 3, 2);
+    
+    // println!("{p1}\n{p2}\n{p3}");
     
     Ok(())
 }

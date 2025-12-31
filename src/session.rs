@@ -53,9 +53,7 @@ impl Session {
                 
                 println!("\r{}", remaining_time);  
             },
-            _ => {
-                println!("\runknown mode");
-            }
+            _ => {}
         }
     }
     
@@ -84,9 +82,7 @@ impl Session {
                     return true;
                 }
             },
-            Mode::Word(_) => {
-                
-            }
+            _ => {}
         }
         
         let input_parts: Vec<&str> = self.input.split(" ").collect();
