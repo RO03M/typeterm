@@ -4,7 +4,7 @@
 
 use std::time::Instant;
 
-use crate::{calculate_wpm, config::Mode};
+use crate::{calculate_wpm, config::Mode, words::wc};
 
 pub struct Session {
     pub mode: Mode,
@@ -52,6 +52,9 @@ impl Session {
                 let remaining_time = t - delta as u32;
                 
                 println!("\r{}", remaining_time);  
+            },
+            Mode::Word(_) => {
+                println!("\r{}/{}", wc(self.input.as_str()), self.phrase_word_count);
             },
             _ => {}
         }

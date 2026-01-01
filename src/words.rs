@@ -44,6 +44,10 @@ pub fn compare_words(input: &str, target: &str) -> String {
     return compared_word;
 }
 
+pub fn wc(text: &str) -> usize {
+    return text.split_whitespace().count();
+}
+
 #[cfg(test)]
 mod tests {
 

@@ -6,15 +6,17 @@ mod display;
 mod page;
 
 use std::{io::{Error, stdout}, time::Duration};
-use crossterm::{cursor::{MoveRight, MoveTo}, event::{Event, KeyCode, KeyModifiers, poll, read}, execute, terminal::{Clear, ClearType, disable_raw_mode, enable_raw_mode}};
+use crossterm::{cursor::{MoveRight, MoveTo}, event::{Event, KeyCode, KeyModifiers, poll, read}, execute, terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode}};
 use crate::{config::Mode, display::page_by_words, page::get_page_from_input, session::Session, words::compare_strings};
 
 fn render() -> Result<(), Error> {
     let mut stdout = stdout();
     let config = config::Config::new();
     let mut session = Session::new(config.mode, config.text.clone());
-    let cell_y = if matches!(session.mode, Mode::Timer(_)) { 1 } else { 0 };
-    println!("celly: {cell_y}");
+    let cell_y = if matches!(session.mode, Mode::Timer(_) | Mode::Word(_)) { 1 } else { 0 };
+
+    let _ = execute!(stdout, EnterAlternateScreen);
+    
     loop  {
         let _ = execute!(stdout, Clear(ClearType::All), MoveTo(0, 0));
         
@@ -84,12 +86,13 @@ fn render() -> Result<(), Error> {
                 }
                 _ => {}
             }
-        }
-        
+        }   
     }
     
     session.end();
 
+    let _ = execute!(stdout, LeaveAlternateScreen);
+    
     println!("\rWPM: {}", session.wpm());
     
     Ok(())
