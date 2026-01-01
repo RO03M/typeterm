@@ -7,7 +7,9 @@ mod page;
 
 use std::{io::{Error, stdout}, time::Duration};
 use crossterm::{cursor::{MoveRight, MoveTo}, event::{Event, KeyCode, KeyModifiers, poll, read}, execute, terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode}};
-use crate::{config::Mode, display::page_by_words, page::get_page_from_input, session::Session, words::compare_strings};
+use crate::{config::Mode, display::page_by_words, page::get_page_from_input, session::Session, words::{compare_strings, wc}};
+
+const inline_word_count: usize = 10;
 
 fn render() -> Result<(), Error> {
     let mut stdout = stdout();
@@ -22,11 +24,15 @@ fn render() -> Result<(), Error> {
         
         session.print_mode_header();
         
-        let current_page = get_page_from_input(&session.input, 10);
-        // println!("current_page: {current_page}");
-        let paged_input = page_by_words(session.input.clone(), 10, current_page);
-        let paged_phrase = page_by_words(session.phrase(), 10, current_page);
-        let next_page = page_by_words(session.phrase(), 10, current_page + 1);
+        let current_page = get_page_from_input(&session.input, inline_word_count);
+
+        let paged_input = page_by_words(session.input.clone(), inline_word_count, current_page);
+        let paged_phrase = page_by_words(session.phrase(), inline_word_count, current_page);
+        let next_page = if wc(paged_phrase.as_str()) < inline_word_count {
+            "".to_string()
+        } else {
+            page_by_words(session.phrase(), inline_word_count, current_page + 1)
+        };
         
         let match_text = compare_strings(paged_input.as_str(), paged_phrase.as_str());
         print!("\r{}\n\r{}", match_text, next_page);
