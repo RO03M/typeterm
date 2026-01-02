@@ -42,7 +42,7 @@ pub struct Config {
 impl Config {
     pub fn new() -> Config {
         let args = Args::parse();
-        let mut mode = Mode::Free;
+        let mut mode = Mode::Timer(15);
         
         if args.time.is_some() {
             mode = Mode::Timer(args.time.unwrap());

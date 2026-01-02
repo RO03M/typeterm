@@ -1,9 +1,3 @@
-pub fn pager(input: String, max_chars: u16, page: u16) {
-    let offset = (page * max_chars) as usize;
-    let max_chars = max_chars as usize;
-    println!("{}", &input[offset..(offset + max_chars)]);
-}
-
 pub fn page_by_words(input: String, words_per_page: usize, page: usize) -> String {
     let words: Vec<&str> = input.split(" ").collect();
     
@@ -23,8 +17,4 @@ pub fn page_by_words(input: String, words_per_page: usize, page: usize) -> Strin
     }
     
     return words[start..end].join(" ");
-}
-
-pub fn get_current_index() {
-    
 }

@@ -4,7 +4,7 @@
 
 use std::time::Instant;
 
-use crate::{calculate_wpm, config::Mode, words::wc};
+use crate::{calculate_wpm, config::Mode, text::wc};
 
 pub struct Session {
     pub mode: Mode,
@@ -35,28 +35,28 @@ impl Session {
         };
     }
     
-    pub fn print_mode_header(&self) {
+    pub fn header(&self) -> String {
         match self.mode {
             Mode::Timer(t) => {
                 if self.started_at.is_none() {
-                    println!("-");
-                    return;
+                    return "-".to_string();
                 }
                 
                 let delta = (Instant::now() - self.started_at.unwrap_or(Instant::now())).as_secs();
                 if delta as u32 > t {
-                    println!("\r0");
-                    return;
+                    return "\r0".to_string();
                 }
                 
                 let remaining_time = t - delta as u32;
                 
-                println!("\r{}", remaining_time);  
+                return format!("\r{}", remaining_time);  
             },
             Mode::Word(_) => {
-                println!("\r{}/{}", wc(self.input.as_str()), self.phrase_word_count);
+                return format!("\r{}/{}", wc(self.input.as_str()), self.phrase_word_count);
             },
-            _ => {}
+            _ => {
+                return "".to_string();
+            }
         }
     }
     
