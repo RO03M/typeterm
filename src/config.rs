@@ -1,4 +1,4 @@
-use std::{fs::File, io::{self, BufRead, IsTerminal, Read}};
+use std::{io::{self, IsTerminal, Read}};
 use clap::{Parser, ValueEnum};
 use rand::{self, Rng};
 
@@ -29,9 +29,9 @@ pub struct Args {
 }
 
 pub enum Mode {
-    Free,
+    _Free,
     Timer(u32),
-    Word(u32)
+    Word
 }
 
 pub struct Config {
@@ -47,7 +47,7 @@ impl Config {
         if args.time.is_some() {
             mode = Mode::Timer(args.time.unwrap());
         } else if args.word_count.is_some() {
-            mode = Mode::Word(args.word_count.unwrap());
+            mode = Mode::Word;
         }
         
         return Config {

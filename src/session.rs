@@ -51,7 +51,7 @@ impl Session {
                 
                 return format!("\r{}", remaining_time);  
             },
-            Mode::Word(_) => {
+            Mode::Word => {
                 return format!("\r{}/{}", wc(self.input.as_str()), self.phrase_word_count);
             },
             _ => {

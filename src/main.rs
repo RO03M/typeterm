@@ -111,7 +111,7 @@ fn calculate_wpm(input: &str, target: &str, time: Duration) -> f32 {
     }
 
     let minutes = time.as_secs_f32() / 60.0;
-    
+
     if minutes == 0.0 {
         return 0.0;
     }

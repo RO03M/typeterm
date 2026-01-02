@@ -7,11 +7,12 @@ use crossterm::{
 };
 
 use crate::{
+    colors::{background_red, red_bold, yellow},
     config::Mode,
     display::page_by_words,
     page::get_page_from_input,
     session::Session,
-    text::{compare_strings, wc},
+    text::wc,
 };
 
 #[derive(PartialEq)]
@@ -42,7 +43,7 @@ impl View {
             paged_input: paged_input.to_string(),
             paged_phrase: paged_phrase.to_string(),
             next_paged_phrase: next_page.to_string(),
-            cell_y: if matches!(session.mode, Mode::Timer(_) | Mode::Word(_)) {
+            cell_y: if matches!(session.mode, Mode::Timer(_) | Mode::Word) {
                 1
             } else {
                 0
@@ -51,7 +52,7 @@ impl View {
     }
 
     pub fn build(&self, stdout: &mut Stdout) {
-        let match_text = compare_strings(self.paged_input.as_str(), self.paged_phrase.as_str());
+        let match_text = build_colored_text(self.paged_input.as_str(), self.paged_phrase.as_str());
         let next_phrase = self.next_paged_phrase.clone();
 
         let _ = queue!(
@@ -73,4 +74,48 @@ impl View {
             let _ = queue!(stdout, MoveTo(0, self.cell_y));
         }
     }
+}
+
+pub fn build_colored_text(input: &str, target: &str) -> String {
+    let input_parts: Vec<&str> = input.split(" ").collect();
+    let target_parts: Vec<&str> = target.split(" ").collect();
+
+    let mut final_string = String::new();
+
+    for (index, target_part) in target_parts.iter().enumerate() {
+        let input_part = input_parts.get(index).copied().unwrap_or("");
+
+        final_string.push_str(colorize_words(input_part, target_part).as_str());
+        final_string.push(' ');
+    }
+
+    return final_string;
+}
+
+pub fn colorize_words(input: &str, target: &str) -> String {
+    let mut compared_word = String::new();
+
+    for (i, char) in target.chars().enumerate() {
+        let input_char = input.chars().nth(i).unwrap_or('\0');
+
+        if input_char == '\0' {
+            compared_word.push(char);
+            continue;
+        }
+
+        if input_char == char {
+            compared_word.push_str(yellow(input_char.to_string().as_str()).as_str());
+        }
+
+        if input_char != char {
+            compared_word.push_str(red_bold(input_char.to_string().as_str()).as_str());
+        }
+    }
+
+    if input.len() > target.len() {
+        let rest = &input[target.len()..];
+        compared_word.push_str(background_red(rest).as_str());
+    }
+
+    return compared_word;
 }
